@@ -6,7 +6,7 @@ import sys
 import django
 django.setup()
 from fpr.models import FPRule, FormatVersion
-from main.models import Derivation
+from main.models import Derivation, SIP
 
 from executeOrRunSubProcess import executeOrRun
 import databaseFunctions

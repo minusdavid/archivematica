@@ -40,6 +40,7 @@ class PolicyChecker:
         self.is_manually_normalized_access_derivative = \
             self.get_is_manually_normalized_access_derivative()
         self._sip_logs_dir = None
+        self._sip_subm_doc_dir = None
         self._sip_policy_checks_dir = None
 
     def get_policies_dir(self):
@@ -141,7 +142,7 @@ class PolicyChecker:
         for the target file to the logs/ directory of the SIP.
         """
         self.save_stdout_to_logs_dir(output)
-        self.save_policy_to_logs_dir(output)
+        self.save_policy_to_subm_doc_dir(output)
 
     def save_stdout_to_logs_dir(self, output):
         """Save the output of running MediaConch's policy checker against the
@@ -162,19 +163,18 @@ class PolicyChecker:
             with open(stdout_path, 'w') as f:
                 f.write(mc_stdout)
 
-    def save_policy_to_logs_dir(self, output):
+    def save_policy_to_subm_doc_dir(self, output):
         """Save the policy file ``policy_filename`` to
-        logs/policyChecks/<policy_filename>/<policy_filename>.xsl in the SIP,
-        if it is not there already.
+        metadata/submissionDocumentation/policies/<policy_filename>.xsl in the
+        SIP, if it is not there already.
+        self.sip_subm_doc_dir
         """
         policy_filename = output.get('policy')
-        if policy_filename and self.sip_policy_checks_dir:
-            policy_dirname, _ = os.path.splitext(policy_filename)
-            policy_dirpath = os.path.join(
-                self.sip_policy_checks_dir, policy_dirname)
-            if not os.path.isdir(policy_dirpath):
-                os.makedirs(policy_dirpath)
-            dst = os.path.join(policy_dirpath, policy_filename)
+        if policy_filename and self.sip_subm_doc_dir:
+            sip_policies_dir = os.path.join(self.sip_subm_doc_dir, 'policies')
+            if not os.path.isdir(sip_policies_dir):
+                os.makedirs(sip_policies_dir)
+            dst = os.path.join(sip_policies_dir, policy_filename)
             if not os.path.isfile(dst):
                 src = os.path.join(self.policies_dir, policy_filename)
                 if not os.path.isfile(src):
@@ -205,6 +205,32 @@ class PolicyChecker:
                 return logs_dir
             print('Warning: unable to find a logs/ directory in the SIP'
                   ' with UUID {}'.format(self.sip_uuid), file=sys.stderr)
+            return None
+
+    @property
+    def sip_subm_doc_dir(self):
+        """Return the absolute path the metadata/submissionDocumentation/
+        directory of the SIP that the target file is a part of.
+        """
+        if self._sip_subm_doc_dir:
+            return self._sip_subm_doc_dir
+        try:
+            sip_model = SIP.objects.get(uuid=self.sip_uuid)
+        except (SIP.DoesNotExist, SIP.MultipleObjectsReturned):
+            print('Warning: unable to retrieve SIP model corresponding to SIP'
+                  ' UUID {}'.format(self.sip_uuid), file=sys.stderr)
+            return None
+        else:
+            sip_path = sip_model.currentpath.replace(
+                '%sharedPath%', self.shared_path, 1)
+            subm_doc_dir = os.path.join(sip_path, 'metadata',
+                                        'submissionDocumentation')
+            if os.path.isdir(subm_doc_dir):
+                self._sip_subm_doc_dir = subm_doc_dir
+                return subm_doc_dir
+            print('Warning: unable to find a metadata/submissionDocumentation/'
+                  ' directory in the SIP with UUID {}'.format(self.sip_uuid),
+                  file=sys.stderr)
             return None
 
     @property
