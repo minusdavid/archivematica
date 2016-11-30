@@ -54,7 +54,6 @@ class MediaConchPolicyCheckerCommand:
             raise MediaConchException("MediaConch failed when running: %s" % (
                 ' '.join(args),))
         try:
-            print(output)
             return Parse(etree_el=etree.fromstring(output), stdout=output)
         except etree.XMLSyntaxError:
             raise MediaConchException(
