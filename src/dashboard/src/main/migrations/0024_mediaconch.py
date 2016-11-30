@@ -112,9 +112,9 @@ def data_migration(apps, schema_editor):
     mediaconch_tool = FPTool.objects.create(
         uuid=mediaconch_tool_uuid,
         description='MediaConch',
-        version='16.05',
+        version='16.10',
         enabled=True,
-        slug='mediaconch-1605'
+        slug='mediaconch-1610'
     )
 
     # MediaConch Command
@@ -754,7 +754,7 @@ def parse_mediaconch_data(target):
 
     .. note::
 
-        At present, MediaConch (v. 16.05) will give terse output so long as you
+        At present, MediaConch (v. 16.10) will give terse output so long as you
         provide *some* argument to the -iv option. With no -iv option, you will
         get high verbosity. To be specific, low verbosity means that only
         checks whose tests fail in the named "MediaConch EBML Implementation
@@ -960,6 +960,7 @@ class MediaConchPolicyCheckerCommand:
             raise MediaConchException("MediaConch failed when running: %s" % (
                 ' '.join(args),))
         try:
+            print(output)
             return Parse(etree_el=etree.fromstring(output), stdout=output)
         except etree.XMLSyntaxError:
             raise MediaConchException(
@@ -997,13 +998,43 @@ class MediaConchPolicyCheckerCommand:
         """Get all of the policy check names and outcomes from the policy check
         output file parsed as ``doc``.
         """
-        policy_checks = {}
+        mc_xml_vrsn = doc.attrib.get('version',
+                                     'No identifiable MediaConch XML version')
+        if mc_xml_vrsn == '0.3':
+            return self.get_policy_checks_v_0_3(doc)
+        elif mc_xml_vrsn == '0.1':
+            return self.get_policy_checks_v_0_1(doc)
+        else:
+            raise MediaConchException(
+                'Unable to parse MediaConch XML files with version'
+                ' "{}"'.format(mc_xml_vrsn))
+
+    def get_policy_checks_v_0_3(self, doc):
+        policy_checks = {'mc_version': '0.3', 'policies': []}
+        root_policy = doc.find('.%smedia/%spolicy' % (NS, NS))
+        if not root_policy:
+            raise MediaConchException('Unable to find a root policy')
+        policy_checks['root_policy'] = (
+            root_policy.attrib.get('name', 'No root policy name'),
+            root_policy.attrib.get('outcome', 'No root policy outcome')
+        )
+        for el_tname in ('policy', 'rule'):
+            path = './/%s%s' % (NS, el_tname)
+            for policy_el in doc.iterfind(path):
+                policy_name = self.get_policy_check_name(policy_el)
+                policy_checks['policies'].append(
+                    (policy_name,
+                     policy_el.attrib.get('outcome', 'no outcome')))
+        return policy_checks
+
+    def get_policy_checks_v_0_1(self, doc):
+        policy_checks = {'mc_version': '0.1', 'policy_checks': {}}
         path = '.%smedia/%spolicyChecks/%scheck' % (NS, NS, NS)
         for policy_check_el in doc.iterfind(path):
             policy_check_name = self.get_policy_check_name(policy_check_el)
             parse = self.parse_policy_check_test(policy_check_el)
             if parse:
-                policy_checks[policy_check_name] = parse
+                policy_checks['policy_checks'][policy_check_name] = parse
         return policy_checks
 
     def get_event_outcome_information_detail(self, policy_checks):
@@ -1013,9 +1044,39 @@ class MediaConchPolicyCheckerCommand:
         passed or failed. If the policy check as a whole passed, just return
         the passed check names; if it failed, just return the failed ones.
         """
+        if policy_checks['mc_version'] == '0.3':
+            return self.get_event_outcome_information_detail_v_0_3(
+                policy_checks)
+        return self.get_event_outcome_information_detail_v_0_1(policy_checks)
+
+    def get_event_outcome_information_detail_v_0_3(self, policy_checks):
         failed_policy_checks = []
         passed_policy_checks = []
-        for name, (out, fie, act, rea) in policy_checks.items():
+        info = 'fail'
+        if policy_checks['root_policy'][0] == 'pass':
+            info = 'pass'
+        for name, outcome in policy_checks['policies']:
+            if outcome == "pass":
+                passed_policy_checks.append(name)
+            else:
+                failed_policy_checks.append('failed policy/rule: %s' % name)
+        prefix = ('MediaConch policy check result against policy file'
+                  ' {}:'.format(self.policy_filename))
+        if info == 'fail':
+            return ('fail', '{} {}'.format(
+                    prefix, '; '.join(failed_policy_checks)))
+        else:
+            if not passed_policy_checks:
+                return ('pass', '{} No checks passed, but none failed'
+                        ' either.'.format(prefix))
+            else:
+                return ('pass', '{} All policy checks passed: {}'.format(prefix,
+                        '; '.join(passed_policy_checks)))
+
+    def get_event_outcome_information_detail_v_0_1(self, policy_checks):
+        failed_policy_checks = []
+        passed_policy_checks = []
+        for name, (out, fie, act, rea) in policy_checks['policy_checks'].items():
             if out == "pass":
                 passed_policy_checks.append(name)
             else:
@@ -1081,4 +1142,6 @@ if __name__ == '__main__':
     policy_checker = MediaConchPolicyCheckerCommand(policies_path,
                                                     policy_filename)
     sys.exit(policy_checker.check(target))
+
+    # mediaconch -mc -iv 4 -fx -p POLICY TARGET
 '''.strip()
