@@ -20,9 +20,13 @@ from executeOrRunSubProcess import executeOrRun
 import databaseFunctions
 from dicts import replace_string_values
 
+LOGGER = get_script_logger('archivematica.mcp.client.validateFile')
 
 def main(file_path, file_uuid, sip_uuid):
     failed = False
+
+    LOGGER.info('FOX main of validateFile on file {} {}'.format(
+        file_path, file_uuid))
 
     # Get file format
     try:
@@ -30,14 +34,23 @@ def main(file_path, file_uuid, sip_uuid):
     except FormatVersion.DoesNotExist:
         rules = fmt = None
 
+    LOGGER.info('FOX got rules and fmt')
+
     if fmt:
         rules = FPRule.active.filter(format=fmt.uuid, purpose='validation')
+
+    LOGGER.info('FOX got rules from fmt')
 
     # Check for a default rule exists
     if not rules:
         rules = FPRule.active.filter(purpose='default_validation')
 
+    LOGGER.info('FOX got default rules')
+
     for rule in rules:
+
+        LOGGER.info('FOX looping through rule')
+
         if rule.command.script_type in ('bashScript', 'command'):
             command_to_execute = replace_string_values(rule.command.command,
                 file_=file_uuid, sip=sip_uuid, type_='file')
@@ -45,6 +58,8 @@ def main(file_path, file_uuid, sip_uuid):
         else:
             command_to_execute = rule.command.command
             args = [file_path]
+
+        LOGGER.info('FOX about to call executeOrRun on command')
 
         print('Running', rule.command.description)
         exitstatus, stdout, stderr = executeOrRun(rule.command.script_type,
@@ -54,6 +69,9 @@ def main(file_path, file_uuid, sip_uuid):
                 stderr, file=sys.stderr)
             failed = True
             continue
+
+        LOGGER.info('FOX Command {} completed with output'
+                    ' {}'.format(rule.command.description, stdout))
 
         print('Command {} completed with output {}'.format(rule.command.description, stdout))
 
@@ -74,6 +92,7 @@ def main(file_path, file_uuid, sip_uuid):
                   file=sys.stderr)
             failed = True
 
+        LOGGER.info('Creating validation event for {} ({})'.format(file_path, file_uuid))
         print('Creating validation event for {} ({})'.format(file_path, file_uuid))
 
         databaseFunctions.insertIntoEvents(
@@ -83,6 +102,8 @@ def main(file_path, file_uuid, sip_uuid):
             eventOutcome=output.get('eventOutcomeInformation'),
             eventOutcomeDetailNote=output.get('eventOutcomeDetailNote'),
         )
+
+        LOGGER.info('insertIntoEvents valled')
 
     if failed:
         return -1
