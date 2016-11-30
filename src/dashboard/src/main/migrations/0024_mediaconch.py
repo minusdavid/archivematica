@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function, unicode_literals
+import os
+
 from django.db import migrations
 
 
-VALIDATE_CMD_FNM = 'mc_validate_cmd.py'
-POLICY_CHECK_CMD_FNM = 'mc_policy_check_cmd.py'
+HERE = os.path.dirname(os.path.abspath(__file__))
+VALIDATE_CMD_FNM = os.path.join(HERE, 'mc_validate_cmd.py')
+POLICY_CHECK_CMD_FNM = os.path.join(HERE, 'mc_policy_check_cmd.py')
 
 
 def data_migration(apps, schema_editor):
