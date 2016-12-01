@@ -21,11 +21,15 @@
 # @author Joseph Perry <joseph@artefactual.com>
 
 from __future__ import print_function
+import logging
 import subprocess
 import shlex
 import uuid
 import os
 import sys
+
+
+logger = logging.getLogger('archivematica.common.executeOrRunSubProcess')
 
 
 def launchSubProcess(command, stdIn="", printing=True, arguments=[], env_updates={}):
@@ -97,6 +101,7 @@ def launchSubProcess(command, stdIn="", printing=True, arguments=[], env_updates
 
 def createAndRunScript(text, stdIn="", printing=True, arguments=[], env_updates={}):
     # Output the text to a /tmp/ file
+    logger.info('in createAndRunScript with a python script')
     scriptPath = "/tmp/" + uuid.uuid4().__str__()
     FILE = os.open(scriptPath, os.O_WRONLY | os.O_CREAT, 0o770)
     os.write(FILE, text)
@@ -104,11 +109,16 @@ def createAndRunScript(text, stdIn="", printing=True, arguments=[], env_updates=
     cmd = [scriptPath]
     cmd.extend(arguments)
 
+    logger.info('about to call launchSubProcess')
+    logger.info('\n'.join(text.split('\n')[:5]))
     # Run it
     ret = launchSubProcess(cmd, stdIn="", printing=True, env_updates=env_updates)
 
+    logger.info('removing the file in /tmp/')
     # Remove the temp file
     os.remove(scriptPath)
+
+    logger.info('returning return code %s', ret)
 
     return ret
 
@@ -142,12 +152,14 @@ def executeOrRun(type, text, stdIn="", printing=True, arguments=[], env_updates=
                 is a string.
     env_updates: Dict of changes to apply to the started process' environment.
     """
+    logger.info('in executeOrRun')
     if type == "command":
         return launchSubProcess(text, stdIn=stdIn, printing=printing, arguments=arguments, env_updates=env_updates)
     if type == "bashScript":
         text = "#!/bin/bash\n" + text
         return createAndRunScript(text, stdIn=stdIn, printing=printing, arguments=arguments, env_updates=env_updates)
     if type == "pythonScript":
+        logger.info('in executeOrRun with a python script')
         text = "#!/usr/bin/env python2\n" + text
         return createAndRunScript(text, stdIn=stdIn, printing=printing, arguments=arguments, env_updates=env_updates)
     if type == "as_is":

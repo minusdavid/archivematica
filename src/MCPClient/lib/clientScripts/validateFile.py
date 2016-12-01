@@ -59,7 +59,8 @@ def main(file_path, file_uuid, sip_uuid):
             command_to_execute = rule.command.command
             args = [file_path]
 
-        LOGGER.info('FOX about to call executeOrRun on command')
+        LOGGER.info('FOX about to call executeOrRun on command {}'.format(rule.command.description))
+        LOGGER.info(command_to_execute.replace('\n', '|||'))
 
         print('Running', rule.command.description)
         exitstatus, stdout, stderr = executeOrRun(rule.command.script_type,
