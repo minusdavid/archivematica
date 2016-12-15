@@ -34,7 +34,8 @@
 
           {% for policy in policies %}
             <tr>
-              <td><a href="{% url 'components.administration.views.view_policy' policy %}"
+              <td style='padding: 1em;'>
+                <a href="{% url 'components.administration.views.view_policy' policy %}"
                 >{{ policy }}</a></td>
               <td><a class="btn btn-danger btn-sm"
                      href="{% url 'components.administration.views.delete_policy' policy %}"
@@ -54,7 +55,8 @@
 
           <div class='form-group'>
             <label class='btn btn-default' for='file'>
-              <input id='file' type='file' style='display:none;' onchange='$("#filename").html($(this).val());'>
+              <input id='file' type='file' name='file' style='display:none;'
+                onchange='$("#filename").html($(this).val().replace("C:\\fakepath\\", ""));'>
               Browse
             </label>
             <span class='label label-info' id='filename'></span>
