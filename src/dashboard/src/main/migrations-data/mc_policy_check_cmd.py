@@ -105,7 +105,7 @@ class MediaConchPolicyCheckerCommand:
     def get_policy_checks_v_0_3(self, doc):
         policy_checks = {'mc_version': '0.3', 'policies': []}
         root_policy = doc.find('.%smedia/%spolicy' % (NS, NS))
-        if not root_policy:
+        if root_policy is None:
             raise MediaConchException('Unable to find a root policy')
         policy_checks['root_policy'] = (
             root_policy.attrib.get('name', 'No root policy name'),
@@ -146,7 +146,7 @@ class MediaConchPolicyCheckerCommand:
         failed_policy_checks = []
         passed_policy_checks = []
         info = 'fail'
-        if policy_checks['root_policy'][0] == 'pass':
+        if policy_checks['root_policy'][1] == 'pass':
             info = 'pass'
         for name, outcome in policy_checks['policies']:
             if outcome == "pass":
