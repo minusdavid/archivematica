@@ -120,9 +120,9 @@ def data_migration(apps, schema_editor):
     mediaconch_tool = FPTool.objects.create(
         uuid=mediaconch_tool_uuid,
         description='MediaConch',
-        version='16.10',
+        version='16.12',
         enabled=True,
-        slug='mediaconch-1610'
+        slug='mediaconch-1612'
     )
 
     with open(VALIDATE_CMD_FNM) as filei:

@@ -22,7 +22,7 @@ Parse = namedtuple('Parse', 'etree_el stdout')
 
 class MediaConchPolicyCheckerCommand:
     """MC Policy Checker Command runs
-    ``mediaconch -mc -iv 4 -fx -p <path_to_policy_xsl_file> <target>``,
+    ``mediaconch -mc -fx -p <path_to_policy_xsl_file> <target>``,
     parses the returned XML, and prints out a JSON report summarizing the
     results of the policy check.
 
@@ -39,14 +39,14 @@ class MediaConchPolicyCheckerCommand:
         self.policy_file_path = os.path.join(policies_path, policy_filename)
 
     def parse_mediaconch_output(self, target):
-        """Run ``mediaconch -mc -iv 4 -fx -p <path_to_policy_xsl_file>
+        """Run ``mediaconch -mc -fx -p <path_to_policy_xsl_file>
         <target>`` against the file at ``path_to_target`` and return an lxml
         etree parse of the output.
         """
         if not os.path.isfile(self.policy_file_path):
             raise MediaConchException(
                 'There is no policy file at {}'.format(self.policy_file_path))
-        args = ['mediaconch', '-mc', '-iv', '4', '-fx', '-p',
+        args = ['mediaconch', '-mc', '-fx', '-p',
                 self.policy_file_path, target]
         try:
             output = subprocess.check_output(args)

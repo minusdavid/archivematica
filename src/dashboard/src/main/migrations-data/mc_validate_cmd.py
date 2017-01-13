@@ -21,21 +21,11 @@ Parse = namedtuple('Parse', 'etree_el stdout')
 
 
 def parse_mediaconch_data(target):
-    """Run `mediaconch -mc -iv 4 -fx <target>` against `target` and return an
+    """Run `mediaconch -mc -fx <target>` against `target` and return an
     lxml etree parse of the output.
-
-    .. note::
-
-        At present, MediaConch (v. 16.10) will give terse output so long as you
-        provide *some* argument to the -iv option. With no -iv option, you will
-        get high verbosity. To be specific, low verbosity means that only
-        checks whose tests fail in the named "MediaConch EBML Implementation
-        Checker" will be displayed. If none fail, the EBML element will contain
-        no <check> elements.
-
     """
 
-    args = ['mediaconch', '-mc', '-iv', '4', '-fx', target]
+    args = ['mediaconch', '-mc', '-fx', target]
     try:
         output = subprocess.check_output(args)
     except subprocess.CalledProcessError:
