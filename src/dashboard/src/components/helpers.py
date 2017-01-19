@@ -318,6 +318,12 @@ def processing_config_path():
         'sharedMicroServiceTasksConfigs/processingMCPConfigs'
     )
 
+def policies_path():
+    return os.path.join(
+        get_server_config_value('sharedDirectory'),
+        'sharedMicroServiceTasksConfigs/policies'
+    )
+
 def stream_file_from_storage_service(url, error_message='Remote URL returned {}'):
     stream = requests.get(url, stream=True, timeout=5)
     if stream.status_code == 200:
