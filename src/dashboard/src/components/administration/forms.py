@@ -128,6 +128,13 @@ class ProcessingConfigurationForm(forms.Form):
     # The available processing fields indexed by choice_uuid.
     processing_fields = OrderedDict()
 
+    processing_fields['bd899573-694e-4d33-8c9b-df0af802437d'] = {
+        'type': 'boolean',
+        'name': 'assign_uuids_to_directories',
+        'label': _('Assign UUIDs to directories'),
+        'yes_option': '2dc3f487-e4b0-4e07-a4b3-6216ed24ca14',
+        'no_option': '891f60d0-1ba8-48d3-b39e-dd0934635d29',
+    }
     processing_fields['755b4177-c587-41a7-8c52-015277568302'] = {
         'type': 'boolean',
         'name': 'quarantine_transfer',

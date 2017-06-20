@@ -4,6 +4,11 @@
 
 <processingMCP>
   <preconfiguredChoices>
+    <!-- Assign UUIDs to directories? -->
+    <preconfiguredChoice>
+      <appliesTo>bd899573-694e-4d33-8c9b-df0af802437d</appliesTo>
+      <goToChain>891f60d0-1ba8-48d3-b39e-dd0934635d29</goToChain>
+    </preconfiguredChoice>
     <!-- Send to quarantine? -->
     <preconfiguredChoice>
       <appliesTo>755b4177-c587-41a7-8c52-015277568302</appliesTo>

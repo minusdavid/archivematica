@@ -417,7 +417,34 @@ class File(models.Model):
         db_table = u'Files'
 
     def __unicode__(self):
-        return _('%(uuid)s: %(originallocation)s now at %(currentlocation)s') % {
+        return _('File %(uuid)s: %(originallocation)s now at %(currentlocation)s') % {
+            'uuid': self.uuid,
+            'originallocation': self.originallocation,
+            'currentlocation': self.currentlocation
+        }
+
+
+class Directory(models.Model):
+    """Information about Directories in units (Transfers, SIPs).
+    Note: Directory instances are only created if the user explicitly
+    configures Archivematica to assign UUIDs to directories.
+    """
+    uuid = models.CharField(max_length=36, primary_key=True,
+                            db_column='directoryUUID')
+    sip = models.ForeignKey(SIP, db_column='sipUUID', to_field='uuid',
+                            null=True, blank=True)
+    transfer = models.ForeignKey(Transfer, db_column='transferUUID',
+                                 to_field='uuid', null=True, blank=True)
+    originallocation = BlobTextField(db_column='originalLocation')
+    currentlocation = BlobTextField(db_column='currentLocation', null=True)
+    enteredsystem = models.DateTimeField(db_column='enteredSystem',
+                                         auto_now_add=True)
+
+    class Meta:
+        db_table = u'Directories'
+
+    def __unicode__(self):
+        return _('Directory %(uuid)s: %(originallocation)s now at %(currentlocation)s') % {
             'uuid': self.uuid,
             'originallocation': self.originallocation,
             'currentlocation': self.currentlocation

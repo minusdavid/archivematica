@@ -36,6 +36,7 @@ archivematicaClamscan_v0.0 = %clientScriptsDirectory%archivematicaClamscan.py
 archivematicaSetTransferType_v0.0 = %clientScriptsDirectory%archivematicaSetTransferType.py
 archivematicaVerifyMets_v0.0 = %clientScriptsDirectory%archivematicaVerifyMets.sh
 assignFileUUIDs_v0.0 = %clientScriptsDirectory%archivematicaAssignFileUUID.py
+assignUUIDsToDirectories_v0.0 = %clientScriptsDirectory%assignUUIDsToDirectories.py
 backupDIP_v0.0 = %clientScriptsDirectory%backupDIP.sh
 bagit_v0.0 = %clientScriptsDirectory%archivematicaBagWithEmptyDirectories.py
 characterizeFile_v0.0 = %clientScriptsDirectory%characterizeFile.py

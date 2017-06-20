@@ -37,7 +37,7 @@ import django
 django.setup()
 # dashboard
 from django.utils import timezone
-from main.models import Agent, Derivation, DublinCore, Event, File, FileID, FPCommandOutput, SIPArrange
+from main.models import Agent, Derivation, Directory, DublinCore, Event, File, FileID, FPCommandOutput, SIPArrange
 
 import archivematicaCreateMETSReingest
 from archivematicaCreateMETSMetadataCSV import parseMetadata
@@ -97,6 +97,9 @@ CSV_METADATA = {}
 # move to common
 
 
+logger = get_script_logger("archivematica.mcp.client.createMETS2")
+
+
 def newChild(parent, tag, text=None, tailText=None, sets=[]):
     # TODO convert sets to a dict, and use **dict
     child = etree.SubElement(parent, tag)
@@ -153,6 +156,38 @@ def getDublinCore(unit, id):
             elem_ns = ns.dctermsBNS
         if txt:
             newChild(ret, elem_ns + term, text=txt)
+    return ret
+
+
+def getDirDmdSec(dir_uuid, relativeDirectoryPath):
+    """Return an lxml ``Element`` representing a <mets:dmdSec> for a directory.
+    It describes the directory as a PREMIS:OBJECT of type
+    premis:intellectualEntity and lists the directory's original name (i.e.,
+    relative path within the transfer) and the UUID assigned to it during
+    transfer. Cf. https://projects.artefactual.com/issues/11192
+    """
+    ret = etree.Element(ns.metsBNS + "dmdSec")
+    mdWrap = etree.SubElement(ret, ns.metsBNS + "mdWrap")
+    mdWrap.set("MDTYPE", "PREMIS:OBJECT")
+    xmlData = etree.SubElement(mdWrap, ns.metsBNS + "xmlData")
+    object_elem = etree.SubElement(xmlData, ns.premisV3BNS + "object",
+                                   nsmap={'premis': ns.premisV3NS})
+    object_elem.set(ns.xsiBNS + "type", "premis:intellectualEntity")
+    object_elem.set(
+        ns.xsiBNS + "schemaLocation",
+        ns.premisV3NS + " http://www.loc.gov/standards/premis/v3/premis.xsd")
+    object_elem.set("version", "3.0")
+    objectIdentifier = etree.SubElement(object_elem,
+                                        ns.premisV3BNS + "objectIdentifier")
+    etree.SubElement(
+        objectIdentifier,
+        ns.premisV3BNS + "objectIdentifierType").text = "UUID"
+    etree.SubElement(
+        objectIdentifier,
+        ns.premisV3BNS + "objectIdentifierValue").text = dir_uuid
+    etree.SubElement(
+        object_elem,
+        ns.premisV3BNS + "originalName").text = escape(relativeDirectoryPath)
     return ret
 
 
@@ -646,9 +681,10 @@ def getIncludedStructMap(baseDirectoryPath):
 # <file ID="file1-UUID" GROUPID="G1" DMDID="dmdSec_02" ADMID="amdSec_01">
 
 
-def createFileSec(directoryPath, parentDiv, baseDirectoryPath, baseDirectoryName, fileGroupIdentifier, fileGroupType, includeAmdSec=True):
-    """
-    Creates fileSec and structMap entries for files on disk recursively.
+def createFileSec(directoryPath, parentDiv, baseDirectoryPath,
+                  baseDirectoryName, fileGroupIdentifier, fileGroupType,
+                  directories, includeAmdSec=True):
+    """Creates fileSec and structMap entries for files on disk recursively.
 
     :param directoryPath: Path to recursively traverse and create METS entries for
     :param parentDiv: structMap div to attach created children to
@@ -676,16 +712,42 @@ def createFileSec(directoryPath, parentDiv, baseDirectoryPath, baseDirectoryName
         print(directoryPath, "doesn't exist", file=sys.stderr)
         return
 
-    structMapDiv = etree.SubElement(parentDiv, ns.metsBNS + 'div', TYPE='Directory', LABEL=os.path.basename(directoryPath))
+    # Create the <mets:div> element for the directory that this file is in.
+    # If this directory has been assigned a UUID during transfer, retrieve that
+    # UUID based on the directory's relative path and document it in its own
+    # <mets:dmdSec> element.
+    directoryName = os.path.basename(directoryPath)
+    relativeDirectoryPath = (
+        '%transferDirectory%' +
+        os.path.join(directoryPath.replace(baseDirectoryPath, "", 1), ''))
+    dir_uuid = directories.get(relativeDirectoryPath)
+    dir_dmd_id = None
+    if dir_uuid:
+        dirDmdSec = getDirDmdSec(dir_uuid, relativeDirectoryPath)
+        globalDmdSecCounter += 1
+        dmdSecs.append(dirDmdSec)
+        dir_dmd_id = "dmdSec_" + globalDmdSecCounter.__str__()
+        dirDmdSec.set("ID", dir_dmd_id)
+    structMapDiv = etree.SubElement(
+        parentDiv, ns.metsBNS + 'div', TYPE='Directory',
+        LABEL=directoryName)
 
     DMDIDS = createDMDIDsFromCSVMetadata(directoryPath.replace(baseDirectoryPath, "", 1))
-    if DMDIDS:
-        structMapDiv.set("DMDID", DMDIDS)
+    if DMDIDS or dir_dmd_id:
+        if DMDIDS and dir_dmd_id:
+            structMapDiv.set("DMDID", dir_dmd_id + ' ' + DMDIDS)
+        elif DMDIDS:
+            structMapDiv.set("DMDID", DMDIDS)
+        else:
+            structMapDiv.set("DMDID", dir_dmd_id)
 
     for item in directoryContents:
         itemdirectoryPath = os.path.join(directoryPath, item)
         if os.path.isdir(itemdirectoryPath):
-            createFileSec(itemdirectoryPath, structMapDiv, baseDirectoryPath, baseDirectoryName, fileGroupIdentifier, fileGroupType, includeAmdSec)
+            createFileSec(itemdirectoryPath, structMapDiv, baseDirectoryPath,
+                          baseDirectoryName, fileGroupIdentifier,
+                          fileGroupType, directories, includeAmdSec)
+
         elif os.path.isfile(itemdirectoryPath):
             # Setup variables for creating file metadata
             DMDIDS = ""
@@ -1036,18 +1098,27 @@ def write_mets(tree, filename):
         f.write(fileContents)
 
 
+
 if __name__ == '__main__':
-    logger = get_script_logger("archivematica.mcp.client.createMETS2")
 
     from optparse import OptionParser
     parser = OptionParser()
-    parser.add_option("--sipType", action="store", dest="sip_type", default="SIP")
-    parser.add_option("-s", "--baseDirectoryPath", action="store", dest="baseDirectoryPath", default="")
-    parser.add_option("-b", "--baseDirectoryPathString", action="store", dest="baseDirectoryPathString", default="SIPDirectory")  # transferDirectory/
-    parser.add_option("-f", "--fileGroupIdentifier", action="store", dest="fileGroupIdentifier", default="")  # transferUUID/sipUUID
-    parser.add_option("-t", "--fileGroupType", action="store", dest="fileGroupType", default="sipUUID")
-    parser.add_option("-x", "--xmlFile", action="store", dest="xmlFile", default="")
-    parser.add_option("-a", "--amdSec", action="store_true", dest="amdSec", default=False)
+    parser.add_option("--sipType", action="store", dest="sip_type",
+                      default="SIP")
+    parser.add_option("-s", "--baseDirectoryPath", action="store",
+                      dest="baseDirectoryPath", default="")
+    # transferDirectory/
+    parser.add_option("-b", "--baseDirectoryPathString", action="store",
+                      dest="baseDirectoryPathString", default="SIPDirectory")
+    # transferUUID/sipUUID
+    parser.add_option("-f", "--fileGroupIdentifier", action="store",
+                      dest="fileGroupIdentifier", default="")
+    parser.add_option("-t", "--fileGroupType", action="store",
+                      dest="fileGroupType", default="sipUUID")
+    parser.add_option("-x", "--xmlFile", action="store", dest="xmlFile",
+                      default="")
+    parser.add_option("-a", "--amdSec", action="store_true", dest="amdSec",
+                      default=False)
     (opts, args) = parser.parse_args()
 
     SIP_TYPE = opts.sip_type
@@ -1084,9 +1155,24 @@ if __name__ == '__main__':
         except OSError:
             pass
 
-    structMap = etree.Element(ns.metsBNS + "structMap", TYPE='physical', ID='structMap_1', LABEL="Archivematica default")
-    structMapDiv = etree.SubElement(structMap, ns.metsBNS + 'div', TYPE="Directory", LABEL=os.path.basename(baseDirectoryPath.rstrip('/')))
-    structMapDivObjects = createFileSec(objectsDirectoryPath, structMapDiv, baseDirectoryPath, baseDirectoryPathString, fileGroupIdentifier, fileGroupType, includeAmdSec)
+    # Fetch any ``Directory`` objects in the database that are contained within
+    # this SIP and return them as a dict from relative paths to UUIDs. (See
+    # createSIPfromTransferObjects.py for the association of ``Directory``
+    # objects to a ``SIP``.
+    directories = {
+        d.originallocation: d.uuid for d in
+        Directory.objects.filter(sip_id=fileGroupIdentifier).all()}
+
+    structMap = etree.Element(
+        ns.metsBNS + "structMap", TYPE='physical', ID='structMap_1',
+        LABEL="Archivematica default")
+    structMapDiv = etree.SubElement(
+        structMap, ns.metsBNS + 'div', TYPE="Directory",
+        LABEL=os.path.basename(baseDirectoryPath.rstrip('/')))
+    structMapDivObjects = createFileSec(
+        objectsDirectoryPath, structMapDiv, baseDirectoryPath,
+        baseDirectoryPathString, fileGroupIdentifier, fileGroupType,
+        directories, includeAmdSec)
 
     el = create_object_metadata(structMapDivObjects, baseDirectoryPath)
     if el:
@@ -1094,7 +1180,9 @@ if __name__ == '__main__':
 
     # In an AIC, the metadata dir is not inside the objects dir
     metadataDirectoryPath = os.path.join(baseDirectoryPath, 'metadata')
-    createFileSec(metadataDirectoryPath, structMapDiv, baseDirectoryPath, baseDirectoryPathString, fileGroupIdentifier, fileGroupType, includeAmdSec)
+    createFileSec(metadataDirectoryPath, structMapDiv, baseDirectoryPath,
+                  baseDirectoryPathString, fileGroupIdentifier, fileGroupType,
+                  directories, includeAmdSec)
 
     fileSec = etree.Element(ns.metsBNS + "fileSec")
     for group in globalFileGrpsUses:  # globalFileGrps.itervalues():

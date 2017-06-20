@@ -28,7 +28,7 @@ import sys
 import django
 django.setup()
 # dashboard
-from main.models import File, SIP, Transfer
+from main.models import File, Directory, SIP, Transfer
 
 # archivematicaCommon
 import archivematicaFunctions
@@ -86,6 +86,11 @@ if __name__ == '__main__':
                 shutil.move(os.path.join(src_path, subitem), dst_path)
         else:
             shutil.move(src_path, dst_path)
+
+    # Update all Directory models of this Transfer (if any exist) so that they
+    # reference the new SIP.
+    Directory.objects.filter(transfer_id=transferUUID).update(
+        sip_id=sip_uuid)
 
     # Get the database list of files in the objects directory.
     # For each file, confirm it's in the SIP objects directory, and update the
