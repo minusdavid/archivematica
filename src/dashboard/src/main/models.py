@@ -345,6 +345,7 @@ class Transfer(models.Model):
     notes = models.TextField(blank=True)
     hidden = models.BooleanField(default=False)
     transfermetadatasetrow = models.ForeignKey('TransferMetadataSet', db_column='transferMetadataSetRowUUID', to_field='id', null=True, blank=True)
+    diruuids = models.BooleanField(db_column='dirUUIDs', default=False)
 
     # Deprecated
     magiclink = models.ForeignKey('MicroServiceChainLink', db_column='magicLink', null=True, blank=True)

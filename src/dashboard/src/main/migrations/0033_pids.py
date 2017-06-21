@@ -247,4 +247,10 @@ class Migration(migrations.Migration):
                 'db_table': 'Directories',
             },
         ),
+        # Add the ``dirUUIDs`` field to the ``Transfer`` model:
+        migrations.AddField(
+            model_name='transfer',
+            name='diruuids',
+            field=models.BooleanField(default=False, db_column=b'dirUUIDs'),
+        )
     ]

@@ -36,15 +36,15 @@ import argparse
 from functools import wraps
 import os
 import sys
-from uuid import uuid4
 
 import django
 django.setup()
 # dashboard
-from main.models import Directory, Transfer
+from main.models import Transfer
 # archivematicaCommon
 from custom_handlers import get_script_logger
-
+from databaseFunctions import create_directory_models
+from archivematicaFunctions import get_dir_uuids, format_subdir_path
 
 logger = get_script_logger('archivematica.mcp.client.assignUUIDsToDirectories')
 
@@ -81,58 +81,30 @@ def _exit_if_not_include_dirs(include_dirs):
 
 
 def _get_transfer_mdl(transfer_uuid):
-    """Get the ``Transfer`` model with UUID ``transfer_uuid``."""
+    """Get the ``Transfer`` model with UUID ``transfer_uuid``. Also update it
+    in the db to indicate that this transfer has UUIDs assigned to the
+    directories that it contains.
+    """
     try:
-        return Transfer.objects.get(uuid=transfer_uuid)
+        transfer_mdl = Transfer.objects.get(uuid=transfer_uuid)
+        transfer_mdl.diruuids = True
+        transfer_mdl.save()
+        return transfer_mdl
     except Transfer.DoesNotExist:
         logger.warning('There is no transfer with UUID %s', transfer_uuid)
         raise DirsUUIDsException
 
 
-def _format_dir_path(dir_path, transfer_path):
-    """Add "/" to end of ``dir_path`` and replace actual root directory
-    ``transfer_path`` with a constant.
-    """
-    return os.path.join(dir_path, '').replace(
-        transfer_path, '%transferDirectory%', 1)
-
-
-def _get_dir_paths(transfer_path):
-    """Return a generator of subdirectory paths in ``transfer_path``."""
-    if not os.path.isdir(transfer_path):
+def _get_subdir_paths(root_path):
+    """Return a generator of subdirectory paths in ``root_path``."""
+    if not os.path.isdir(root_path):
         logger.warning('Transfer path %s is not a path to a directory',
-                       transfer_path)
+                       root_path)
         raise DirsUUIDsException
     # objects/ and root dirs need no UUIDs.
-    exclude_paths = (transfer_path, os.path.join(transfer_path, 'objects'))
-    return (_format_dir_path(dir_path, transfer_path) for dir_path, __, ___ in
-            os.walk(transfer_path) if dir_path not in exclude_paths)
-
-
-def _get_dir_uuids(dir_paths):
-    """Return a generator of 2-tuples containing a directory path and its newly
-    minted UUID.
-    """
-    for dir_path in dir_paths:
-        uuid = str(uuid4())
-        msg = 'Assigning UUID {} to directory path {}'.format(
-            uuid, dir_path)
-        print(msg)
-        logger.info(msg)
-        yield dir_path, uuid
-
-
-def _create_directory_models(dir_paths_uuids, transfer_mdl):
-    """Create ``Directory`` models to encode the relationship between each
-    directory path, the UUID for that directory, and the ``Transfer`` model
-    that the directories are a part of.
-    """
-    Directory.objects.bulk_create([
-        Directory(uuid=dir_uuid,
-                  transfer=transfer_mdl,
-                  originallocation=dir_path,
-                  currentlocation=dir_path)
-        for dir_path, dir_uuid in dir_paths_uuids])
+    exclude_paths = (root_path, os.path.join(root_path, 'objects'))
+    return (format_subdir_path(dir_path, root_path) for dir_path, __, ___ in
+            os.walk(root_path) if dir_path not in exclude_paths)
 
 
 def str2bool(val):
@@ -152,8 +124,8 @@ def main(transfer_path, transfer_uuid, include_dirs):
     transfer for now.
     """
     _exit_if_not_include_dirs(include_dirs)
-    _create_directory_models(
-        _get_dir_uuids(_get_dir_paths(transfer_path)),
+    create_directory_models(
+        get_dir_uuids(_get_subdir_paths(transfer_path), logger),
         _get_transfer_mdl(transfer_uuid))
     return 0
 

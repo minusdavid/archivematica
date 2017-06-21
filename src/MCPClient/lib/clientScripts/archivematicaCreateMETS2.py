@@ -1098,7 +1098,6 @@ def write_mets(tree, filename):
         f.write(fileContents)
 
 
-
 if __name__ == '__main__':
 
     from optparse import OptionParser
@@ -1160,7 +1159,7 @@ if __name__ == '__main__':
     # createSIPfromTransferObjects.py for the association of ``Directory``
     # objects to a ``SIP``.
     directories = {
-        d.originallocation: d.uuid for d in
+        d.currentlocation: d.uuid for d in
         Directory.objects.filter(sip_id=fileGroupIdentifier).all()}
 
     structMap = etree.Element(

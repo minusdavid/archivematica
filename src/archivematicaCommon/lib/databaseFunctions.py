@@ -32,7 +32,7 @@ from archivematicaFunctions import strToUnicode
 
 from django.db.models import Q
 from django.utils import timezone
-from main.models import Agent, Derivation, Event, File, FPCommandOutput, Job, SIP, Task, Transfer, UnitVariable
+from main.models import Agent, Derivation, Directory, Event, File, FPCommandOutput, Job, SIP, Task, Transfer, UnitVariable
 
 LOGGER = logging.getLogger('archivematica.common')
 
@@ -356,3 +356,16 @@ def deUnicode(str):
     if str is None:
         return None
     return unicode(str).encode('utf-8')
+
+
+def create_directory_models(dir_paths_uuids, transfer_mdl):
+    """Create ``Directory`` models to encode the relationship between each
+    directory path/UUID pair in ``dir_paths_uuids`` and the ``Transfer`` model
+    that the directories are a part of.
+    """
+    Directory.objects.bulk_create([
+        Directory(uuid=dir_uuid,
+                  transfer=transfer_mdl,
+                  originallocation=dir_path,
+                  currentlocation=dir_path)
+        for dir_path, dir_uuid in dir_paths_uuids])
