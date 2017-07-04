@@ -31,7 +31,7 @@ from django.template import RequestContext
 from django.utils.translation import ugettext as _
 
 from main import models
-from components.administration.forms import AgentForm, StorageSettingsForm, ChecksumSettingsForm, TaxonomyTermForm
+from components.administration.forms import AgentForm, HandleForm, StorageSettingsForm, ChecksumSettingsForm, TaxonomyTermForm
 import components.administration.views_processing as processing_views
 import components.decorators as decorators
 import components.helpers as helpers
@@ -348,6 +348,21 @@ def sources(request):
 
 def processing(request):
     return processing_views.index(request)
+
+
+def handle_config(request):
+    """Display or save the Handle configuration form, which allows for the
+    specification of configuration values for Handle PID creation and binding
+    using the ``bindpid`` module.
+    """
+    initial_data = _intial_settings_data()
+    form = HandleForm(
+        request.POST or None,
+        initial=initial_data)
+    if form.is_valid():
+        form.save()
+        messages.info(request, _('Saved.'))
+    return render(request, 'administration/handle_config.html', locals())
 
 
 def premis_agent(request):

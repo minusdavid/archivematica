@@ -53,6 +53,86 @@ class SettingsForm(forms.Form):
             helpers.set_setting(key, self.cleaned_data[key])
 
 
+class HandleForm(SettingsForm):
+    """Form class for configuring client access to a handle server endpoint.
+    This configuration PIDs/handles to be requested for units (DIPs), files or
+    folders, as well as the resolution of URLs based on those PIDs, i.e.,
+    PURLs, to specified URLs.
+    """
+
+    pid_web_service_endpoint = forms.URLField(
+        required=False,
+        label=_('Web service endpoint'),
+        help_text=_('The URL for (POST) requests to create and resolve PIDs.'))
+
+    pid_web_service_key = forms.CharField(
+        required=False,
+        label=_('Web service key'),
+        help_text=_('Web service key needed for authentication to make'
+                    ' PID-creation requests to the PID web service endpoint.'))
+
+    naming_authority = forms.CharField(
+        required=False,
+        label=_('Naming authority'),
+        help_text=_('Handle naming authority (e.g., 12345)'))
+
+    handle_resolver_url = forms.URLField(
+        required=False,
+        label=_('Resolver URL'),
+        help_text=_('The URL to append generated PIDs to in order to create'
+                    ' (potentially qualified) PURLs (persistent URLs) that'
+                    ' resolve to the applicable resolve URL. Note the second'
+                    ' "r" in "resolver"!'))
+
+    resolve_url_template_archive = forms.CharField(
+        required=False,
+        label=_('Archive resolve URL template'),
+        help_text=_('Template (Django or Jinja2) for the URL that a unit\'s PURL'
+                    ' should resolve to'))
+
+    resolve_url_template_mets = forms.CharField(
+        required=False,
+        label=_('METS resolve URL template'),
+        help_text=_('Template (Django or Jinja2) for the URL that a unit\'s PURL'
+                    ' with the "mets" qualifier should resolve to'))
+
+    resolve_url_template_file = forms.CharField(
+        required=False,
+        label=_('File resolve URL template'),
+        help_text=_('Template (Django or Jinja2) for the URL that a file\'s PURL'
+                    ' should resolve to'))
+
+    resolve_url_template_file_access = forms.CharField(
+        required=False,
+        label=_('Access derivative resolve URL template'),
+        help_text=_('Template (Django or Jinja2) for the URL that a file\'s'
+                    ' PURL with the "access" qualifier should resolve to'))
+
+    resolve_url_template_file_preservation = forms.CharField(
+        required=False,
+        label=_('Preservation derivative resolve URL template'),
+        help_text=_('Template (Django or Jinja2) for the URL that a file\'s'
+                    ' PURL with the "preservation" qualifier should resolve'
+                    ' to'))
+
+    resolve_url_template_file_original = forms.CharField(
+        required=False,
+        label=_('Original file resolve URL template'),
+        help_text=_('Template (Django or Jinja2) for the URL that a file\'s'
+                    ' PURL with the "original" qualifier should resolve to'))
+
+    pid_request_body_template = forms.CharField(
+        required=False,
+        widget=forms.Textarea,
+        label=_('PID/handle request request body template'),
+        help_text=_('Template (Django or Jinja2) that constructs the HTTP'
+                    ' request body using the rendered URL templates above. Has'
+                    ' access to the following variables: "pid",'
+                    ' "base_resolve_url", and qualified_resolve_urls, the last'
+                    ' of which is a list of dicts with "url" and "qualifier"'
+                    ' keys.'))
+
+
 class StorageSettingsForm(SettingsForm):
 
     class StripCharField(forms.CharField):
