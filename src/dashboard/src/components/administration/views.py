@@ -42,6 +42,7 @@ from version import get_full_version
 
 logger = logging.getLogger('archivematica.dashboard')
 
+
 """ @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
       Administration
     @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ """
@@ -353,15 +354,17 @@ def processing(request):
 def handle_config(request):
     """Display or save the Handle configuration form, which allows for the
     specification of configuration values for Handle PID creation and binding
-    using the ``bindpid`` module.
+    using the ``bindpid`` module. State is stored in DashboardSettings table.
     """
-    initial_data = _intial_settings_data()
-    form = HandleForm(
-        request.POST or None,
-        initial=initial_data)
-    if form.is_valid():
-        form.save()
-        messages.info(request, _('Saved.'))
+    if request.method == 'POST':
+        form = HandleForm(request.POST)
+        if form.is_valid():
+            models.DashboardSetting.objects.set_dict(
+                'handle', form.cleaned_data)
+            messages.info(request, _('Saved.'))
+    else:
+        form = HandleForm(
+            initial=models.DashboardSetting.objects.get_dict('handle'))
     return render(request, 'administration/handle_config.html', locals())
 
 

@@ -6,7 +6,7 @@ import main.models
 
 
 def data_migration(apps, schema_editor):
-    """Persistent Identifiers (PID) Workflow modifications (migration).
+    """Directory UUIDs Workflow modifications (migration).
     This migration modifies the workflow so that there are two new
     micro-services, i.e., chain links, one which asks the user whether to
     assign UUIDs to directories and the another which actually assigns UUIDs to

@@ -58,6 +58,8 @@ class HandleForm(SettingsForm):
     This configuration PIDs/handles to be requested for units (DIPs), files or
     folders, as well as the resolution of URLs based on those PIDs, i.e.,
     PURLs, to specified URLs.
+    Note: the attributes of this form are (and must remain) identical to
+    archivematicaCommon/bindpid::CFGABLE_PARAMS.
     """
 
     pid_web_service_endpoint = forms.URLField(
@@ -69,7 +71,7 @@ class HandleForm(SettingsForm):
         required=False,
         label=_('Web service key'),
         help_text=_('Web service key needed for authentication to make'
-                    ' PID-creation requests to the PID web service endpoint.'))
+                    ' PID-binding requests to the PID web service endpoint.'))
 
     naming_authority = forms.CharField(
         required=False,
@@ -87,39 +89,45 @@ class HandleForm(SettingsForm):
     resolve_url_template_archive = forms.CharField(
         required=False,
         label=_('Archive resolve URL template'),
-        help_text=_('Template (Django or Jinja2) for the URL that a unit\'s PURL'
-                    ' should resolve to'))
+        help_text=_('Template (Django or Jinja2) for the URL that a unit\'s'
+                    ' PURL should resolve to. Has access to "pid" and'
+                    ' "naming_authority" variables.'))
 
     resolve_url_template_mets = forms.CharField(
         required=False,
         label=_('METS resolve URL template'),
-        help_text=_('Template (Django or Jinja2) for the URL that a unit\'s PURL'
-                    ' with the "mets" qualifier should resolve to'))
+        help_text=_('Template (Django or Jinja2) for the URL that a unit\'s'
+                    ' PURL with the "mets" qualifier should resolve to. Has'
+                    ' access to "pid" and "naming_authority" variables.'))
 
     resolve_url_template_file = forms.CharField(
         required=False,
         label=_('File resolve URL template'),
-        help_text=_('Template (Django or Jinja2) for the URL that a file\'s PURL'
-                    ' should resolve to'))
+        help_text=_('Template (Django or Jinja2) for the URL that a file\'s'
+                    ' PURL should resolve to. Has access to "pid" and'
+                    ' "naming_authority" variables.'))
 
     resolve_url_template_file_access = forms.CharField(
         required=False,
         label=_('Access derivative resolve URL template'),
         help_text=_('Template (Django or Jinja2) for the URL that a file\'s'
-                    ' PURL with the "access" qualifier should resolve to'))
+                    ' PURL with the "access" qualifier should resolve to. Has'
+                    ' access to "pid" and "naming_authority" variables.'))
 
     resolve_url_template_file_preservation = forms.CharField(
         required=False,
         label=_('Preservation derivative resolve URL template'),
         help_text=_('Template (Django or Jinja2) for the URL that a file\'s'
                     ' PURL with the "preservation" qualifier should resolve'
-                    ' to'))
+                    ' to. Has access to "pid" and "naming_authority"'
+                    ' variables.'))
 
     resolve_url_template_file_original = forms.CharField(
         required=False,
         label=_('Original file resolve URL template'),
         help_text=_('Template (Django or Jinja2) for the URL that a file\'s'
-                    ' PURL with the "original" qualifier should resolve to'))
+                    ' PURL with the "original" qualifier should resolve to. Has'
+                    ' access to "pid" and "naming_authority" variables.'))
 
     pid_request_body_template = forms.CharField(
         required=False,
@@ -128,9 +136,9 @@ class HandleForm(SettingsForm):
         help_text=_('Template (Django or Jinja2) that constructs the HTTP'
                     ' request body using the rendered URL templates above. Has'
                     ' access to the following variables: "pid",'
-                    ' "base_resolve_url", and qualified_resolve_urls, the last'
-                    ' of which is a list of dicts with "url" and "qualifier"'
-                    ' keys.'))
+                    ' "naming_authority", "base_resolve_url", and'
+                    ' "qualified_resolve_urls", the last of which is a list of'
+                    ' dicts with "url" and "qualifier" keys.'))
 
 
 class StorageSettingsForm(SettingsForm):
