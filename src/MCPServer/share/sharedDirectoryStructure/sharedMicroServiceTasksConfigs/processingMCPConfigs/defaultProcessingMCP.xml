@@ -19,6 +19,11 @@
       <appliesTo>eeb23509-57e2-4529-8857-9d62525db048</appliesTo>
       <goToChain>5727faac-88af-40e8-8c10-268644b0142d</goToChain>
     </preconfiguredChoice>
+    <!-- Bind PIDs? -->
+    <preconfiguredChoice>
+      <appliesTo>05357876-a095-4c11-86b5-a7fff01af668</appliesTo>
+      <goToChain>fcfea449-158c-452c-a8ad-4ae009c4eaba</goToChain>
+    </preconfiguredChoice>
     <!-- Remove from quarantine -->
     <preconfiguredChoice>
       <appliesTo>19adb668-b19a-4fcb-8938-f49d7485eaf3</appliesTo>

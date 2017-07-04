@@ -51,7 +51,7 @@ import sys
 import django
 django.setup()
 # dashboard
-from main.models import DashboardSetting
+from main.models import DashboardSetting, File
 # archivematicaCommon
 from bindpid import bind_pid, HandlePIDException
 from custom_handlers import get_script_logger
@@ -105,6 +105,13 @@ def str2bool(val):
     return False
 
 
+def _update_file_mdl(file_uuid, naming_authority):
+    File.objects.filter(
+        uuid=file_uuid).update(
+            handle__type='hdl:{}'.format(naming_authority),
+            handle__value='{}/{}'.format(naming_authority, file_uuid))
+
+
 @exit_on_known_exception
 def main(file_uuid, bind_pids_switch):
     """Bind the UUID ``file_uuid`` to the appropriate URL(s), given the
@@ -113,9 +120,14 @@ def main(file_uuid, bind_pids_switch):
     """
     _exit_if_not_bind_pids(bind_pids_switch)
     try:
-        logger.info(bind_pid(**_get_bind_pid_config(file_uuid)))
+        args = _get_bind_pid_config(file_uuid)
+        msg = bind_pid(**args)
+        _update_file_mdl(file_uuid, args['naming_authority'])
+        print(msg)  # gets appended to handles.log file
+        logger.info(msg)
         return 0
     except HandlePIDException as exc:
+        print(exc, file=sys.stderr)
         logger.info(exc)
         raise BindPIDException
 
@@ -127,5 +139,7 @@ if __name__ == '__main__':
     parser.add_argument('--bind-pids', action='store', type=str2bool,
                         dest="bind_pids_switch", default='No')
     args = parser.parse_args()
+    if args.file_uuid == 'None':
+        sys.exit(0)
     logger.info('bind_pid called with args: %s', vars(args))
     sys.exit(main(**vars(args)))

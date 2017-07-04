@@ -215,7 +215,6 @@ class ProcessingConfigurationForm(forms.Form):
 
     # The available processing fields indexed by choice_uuid.
     processing_fields = OrderedDict()
-
     processing_fields['bd899573-694e-4d33-8c9b-df0af802437d'] = {
         'type': 'boolean',
         'name': 'assign_uuids_to_directories',
@@ -290,6 +289,13 @@ class ProcessingConfigurationForm(forms.Form):
         'name': 'normalize_transfer',
         'label': _('Approve normalization'),
         'yes_option': '1e0df175-d56d-450d-8bee-7df1dc7ae815',
+    }
+    processing_fields['05357876-a095-4c11-86b5-a7fff01af668'] = {
+        'type': 'boolean',
+        'name': 'bind_pids',
+        'label': _('Bind PIDs'),
+        'yes_option': '1e79e1b6-cf50-49ff-98a3-fa51d73553dc',
+        'no_option': 'fcfea449-158c-452c-a8ad-4ae009c4eaba'
     }
     processing_fields['eeb23509-57e2-4529-8857-9d62525db048'] = {
         'type': 'chain_choice',

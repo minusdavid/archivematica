@@ -311,6 +311,7 @@ class SIP(models.Model):
         ('AIC-REIN', _l('Reingested AIC')),
     )
     sip_type = models.CharField(max_length=8, choices=SIP_TYPE_CHOICES, db_column='sipType', default='SIP')
+    handle = models.ManyToManyField('Identifier')
 
     # Deprecated
     magiclink = models.ForeignKey('MicroServiceChainLink', db_column='magicLink', null=True, blank=True)
@@ -397,6 +398,27 @@ class SIPArrangeAccessMapping(models.Model):
         return 'arrange_path={s.arrange_path}, system={s.system}, identifier={s.identifier}'.format(s=self)
 
 
+class Identifier(models.Model):
+    """Identifiers used by File, Directory SIP models. Used for Handle System
+    handles/PIDs and maybe for other types of identifier in the future.
+    """
+    id = models.AutoField(primary_key=True, db_column='pk', editable=False)
+    type = models.TextField(verbose_name=_l('Identifier Type'),
+                            null=True, blank=False)
+    value = models.TextField(
+        verbose_name=_l('Identifier Value'),
+        help_text=_l('Used for premis:objectIdentifierType and'
+                     ' premis:objectIdentifierValue in the METS file.'),
+        null=True, blank=False)
+
+    def __str__(self):
+        return (u'Identifier {i.identifiervalue} of type'
+                ' {i.identifiertype}'.format(a=self))
+
+    class Meta:
+        db_table = u'Identifiers'
+
+
 class File(models.Model):
     """ Information about Files in units (Transfers, SIPs). """
     uuid = models.CharField(max_length=36, primary_key=True, db_column='fileUUID')
@@ -413,6 +435,16 @@ class File(models.Model):
     label = models.TextField(blank=True)
     enteredsystem = models.DateTimeField(db_column='enteredSystem', auto_now_add=True)
     removedtime = models.DateTimeField(db_column='removedTime', null=True, default=None)
+
+    # This should hold the handle generated for the file, if one was generated.
+    # Its format is expected to be "<NAMING_AUTHORITY>/<HANDLE>" i.e,.
+    # "<NAMING_AUTHORITY>/<UUID>", e.g.,
+    # "12345/6e6ea3f0-93ce-4798-bb75-a88e2d0d6f09". Note that neither the
+    # resolver URL for constructing PURLs nor the qualifier (for constructing
+    # qualified PURLs) should be included in this value. If needed, these
+    # values can be constructed using the DashboardSettings rows with scope
+    # 'handle'.
+    handle = models.ManyToManyField('Identifier')
 
     class Meta:
         db_table = u'Files'
@@ -440,6 +472,7 @@ class Directory(models.Model):
     currentlocation = BlobTextField(db_column='currentLocation', null=True)
     enteredsystem = models.DateTimeField(db_column='enteredSystem',
                                          auto_now_add=True)
+    handle = models.ManyToManyField('Identifier')
 
     class Meta:
         db_table = u'Directories'

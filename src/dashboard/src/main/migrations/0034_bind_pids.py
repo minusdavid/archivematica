@@ -21,7 +21,7 @@ after_cl_2 = set_file_permissions_chain_link = (
 
 from __future__ import print_function, unicode_literals
 
-from django.db import migrations
+from django.db import migrations, models
 
 
 def data_migration(apps, schema_editor):
@@ -103,7 +103,8 @@ def data_migration(apps, schema_editor):
     StandardTaskConfig.objects.create(
         id=bind_pids_stc_uuid,
         execute='bindPID_v0.0',
-        arguments=('"%fileUUID%"')
+        arguments=('"%fileUUID%" --bind-pids "%BindPIDs%"'),
+        stdout_file='%SIPLogsDirectory%handles.log'
     )
 
     # TaskConfig that performs "Bind PIDs"
@@ -147,7 +148,7 @@ def data_migration(apps, schema_editor):
     bind_pids_choice_chain_link_uuid = '05357876-a095-4c11-86b5-a7fff01af668'
     bind_pids_choice_chain_link = MicroServiceChainLink.objects.create(
         id=bind_pids_choice_chain_link_uuid,
-        microservicegroup='Normalize',
+        microservicegroup='Bind PIDs',
         defaultexitmessage='Failed',
         currenttask=bind_pids_choice_task_cfg,
         replaces_id=None,
@@ -231,4 +232,30 @@ class Migration(migrations.Migration):
     operations = [
         # Modify the workflow:
         migrations.RunPython(data_migration),
+        migrations.CreateModel(
+            name='Identifier',
+            fields=[
+                ('id', models.AutoField(serialize=False, editable=False, primary_key=True, db_column=b'pk')),
+                ('type', models.TextField(null=True, verbose_name='Identifier Type')),
+                ('value', models.TextField(help_text='Used for premis:objectIdentifierType and premis:objectIdentifierValue in the METS file.', null=True, verbose_name='Identifier Value'))
+            ],
+            options={
+                'db_table': 'Identifiers',
+            },
+        ),
+        migrations.AddField(
+            model_name='directory',
+            name='handle',
+            field=models.ManyToManyField(to='main.Identifier'),
+        ),
+        migrations.AddField(
+            model_name='sip',
+            name='handle',
+            field=models.ManyToManyField(to='main.Identifier'),
+        ),
+        migrations.AddField(
+            model_name='file',
+            name='handle',
+            field=models.ManyToManyField(to='main.Identifier'),
+        ),
     ]

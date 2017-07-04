@@ -23,7 +23,7 @@ Example usage::
     http://<RESOLVER_URL>/12345/58fe1b06-ee88-41ca-9bc9-320dcac6c858?locatt=view:original => https://my-domain.org/original/12345/58fe1b06-ee88-41ca-9bc9-320dcac6c858
     http://<RESOLVER_URL>/12345/58fe1b06-ee88-41ca-9bc9-320dcac6c858?locatt=view:preservation => https://my-domain.org/preservation/12345/58fe1b06-ee88-41ca-9bc9-320dcac6c858
     http://<RESOLVER_URL>/12345/58fe1b06-ee88-41ca-9bc9-320dcac6c858 => https://my-domain.org/access/12345/58fe1b06-ee88-41ca-9bc9-320dcac6c858
-    Joels-MacBook-Pro-2:handlepid joeldunham⚡
+    Joels-MacBook-Pro-2:handlepid joeldunham
 
 
 PID Binding Configuration Parameters
@@ -132,8 +132,13 @@ Example::
     </soapenv:Envelope>
 """
 
+from __future__ import print_function, unicode_literals
+
 import argparse
-import configparser
+try:
+    import configparser
+except ImportError:
+    import ConfigParser as configparser
 import os
 
 try:
@@ -326,7 +331,9 @@ def bind_pid(**kwargs):
         data=request_body,
         headers={'Content-Type': 'text/xml',  # <= non-paramed assumpton alert
                  'Authorization': 'bearer {}'.format(
-                     kwargs['pid_web_service_key'])})
+                     kwargs['pid_web_service_key'])},
+        verify=False  # TODO: REMOVE IN PRODUCTION!!!
+    )
     if response.status_code == requests.codes.ok:
         yay_msg = (
             'Congratulations, you have successfully bound the handle'
