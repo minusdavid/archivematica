@@ -245,17 +245,17 @@ class Migration(migrations.Migration):
         ),
         migrations.AddField(
             model_name='directory',
-            name='handle',
+            name='identifiers',
             field=models.ManyToManyField(to='main.Identifier'),
         ),
         migrations.AddField(
             model_name='sip',
-            name='handle',
+            name='identifiers',
             field=models.ManyToManyField(to='main.Identifier'),
         ),
         migrations.AddField(
             model_name='file',
-            name='handle',
+            name='identifiers',
             field=models.ManyToManyField(to='main.Identifier'),
         ),
     ]

@@ -311,7 +311,7 @@ class SIP(models.Model):
         ('AIC-REIN', _l('Reingested AIC')),
     )
     sip_type = models.CharField(max_length=8, choices=SIP_TYPE_CHOICES, db_column='sipType', default='SIP')
-    handle = models.ManyToManyField('Identifier')
+    identifiers = models.ManyToManyField('Identifier')
 
     # Deprecated
     magiclink = models.ForeignKey('MicroServiceChainLink', db_column='magicLink', null=True, blank=True)
@@ -436,7 +436,7 @@ class File(models.Model):
     enteredsystem = models.DateTimeField(db_column='enteredSystem', auto_now_add=True)
     removedtime = models.DateTimeField(db_column='removedTime', null=True, default=None)
 
-    # This should hold the handle generated for the file, if one was generated.
+    # This should hold any handles generated for the file.
     # Its format is expected to be "<NAMING_AUTHORITY>/<HANDLE>" i.e,.
     # "<NAMING_AUTHORITY>/<UUID>", e.g.,
     # "12345/6e6ea3f0-93ce-4798-bb75-a88e2d0d6f09". Note that neither the
@@ -444,7 +444,7 @@ class File(models.Model):
     # qualified PURLs) should be included in this value. If needed, these
     # values can be constructed using the DashboardSettings rows with scope
     # 'handle'.
-    handle = models.ManyToManyField('Identifier')
+    identifiers = models.ManyToManyField('Identifier')
 
     class Meta:
         db_table = u'Files'
@@ -472,7 +472,7 @@ class Directory(models.Model):
     currentlocation = BlobTextField(db_column='currentLocation', null=True)
     enteredsystem = models.DateTimeField(db_column='enteredSystem',
                                          auto_now_add=True)
-    handle = models.ManyToManyField('Identifier')
+    identifiers = models.ManyToManyField('Identifier')
 
     class Meta:
         db_table = u'Directories'

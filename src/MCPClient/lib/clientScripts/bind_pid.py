@@ -51,7 +51,7 @@ import sys
 import django
 django.setup()
 # dashboard
-from main.models import DashboardSetting, File
+from main.models import DashboardSetting, File, Identifier
 # archivematicaCommon
 from bindpid import bind_pid, HandlePIDException
 from custom_handlers import get_script_logger
@@ -106,10 +106,14 @@ def str2bool(val):
 
 
 def _update_file_mdl(file_uuid, naming_authority):
-    File.objects.filter(
-        uuid=file_uuid).update(
-            handle__type='hdl:{}'.format(naming_authority),
-            handle__value='{}/{}'.format(naming_authority, file_uuid))
+    """Add the newly minted handle to the ``File`` model as an identifier in its
+    m2m ``identifiers`` attribute.
+    """
+    identifier = Identifier.objects.create(
+        type='hdl:{}'.format(naming_authority),
+        value='{}/{}'.format(naming_authority, file_uuid))
+    file_mdl = File.objects.get(uuid=file_uuid)
+    file_mdl.identifiers.add(identifier)
 
 
 @exit_on_known_exception
@@ -123,7 +127,7 @@ def main(file_uuid, bind_pids_switch):
         args = _get_bind_pid_config(file_uuid)
         msg = bind_pid(**args)
         _update_file_mdl(file_uuid, args['naming_authority'])
-        print(msg)  # gets appended to handles.log file
+        print(msg)  # gets appended to handles.log file, cf. StandardTaskConfig
         logger.info(msg)
         return 0
     except HandlePIDException as exc:
