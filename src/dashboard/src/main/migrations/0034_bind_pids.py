@@ -1,23 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Migration for PID Binding: persistent identifier creation & resolution.
-
-# UNUSED and TO-BE-DEPRECATED: keeping around in case I need to backtrack.
-# Chain Link after #1 is "Normalize: Normalize for preservation"
-# Its UUID is 440ef381-8fe8-4b6e-9198-270ee5653454.
-after_cl_1_uuid = normalize_preservation_chain_link_uuid = (
-    '440ef381-8fe8-4b6e-9198-270ee5653454')
-after_cl_1 = normalize_preservation_chain_link = (
-    MicroServiceChainLink.objects.get(
-        id=normalize_preservation_chain_link_uuid))
-
-# Chain Link after #2 is "Normalize: Set file permissions
-# Its UUID is 83257841-594d-4a0e-a4a1-1e9269c30f3d.
-after_cl_2_uuid = set_file_permissions_chain_link_uuid = (
-    '83257841-594d-4a0e-a4a1-1e9269c30f3d')
-after_cl_2 = set_file_permissions_chain_link = (
-    MicroServiceChainLink.objects.get(
-        id=set_file_permissions_chain_link_uuid)
-"""
+"""Migration for PID Binding: persistent identifier creation & resolution."""
 
 from __future__ import print_function, unicode_literals
 
@@ -26,25 +8,23 @@ from django.db import migrations, models
 
 def data_migration(apps, schema_editor):
     """Persistent Identifiers (PID) Workflow modifications (migration).
-    This migration modifies the workflow so that there are two new
-    micro-services, i.e., chain links, one which asks the user whether to
-    bind PIDs and the another which actually binds PIDs. Binding a PID means
-    requesting from a Handle server a PID (a.k.a. a "handle") for a file,
-    directory or unit, and requesting that the PID be bound (set to resolve to)
-    a specific external URL. Note that the PURL (i.e., PID's URL) may be
-    configured to resolve to different external (resolve) URLs depending on the
-    qualifier (GET query parameter) that is appended to it. See
-    archivematicaCommon/lib/bindpid.py for more details.
+    This migration modifies the workflow so that there are three new
+    micro-services, i.e., chain links, executed in the following order:
 
-    Creation steps:
+    1. Bind PIDs?, which asks the user whether to bind PIDs,
+    2. Bind PID, which binds a PID to each file it is passed, and
+    3. Bind PIDs, which binds PIDs to entire unit and any directories (if
+       directories have been given UUIDs.
 
-    1. Create new Micro-service chain link "Bind PIDs"
-    2. Create new Micro-service *choice* chain link "Bind PIDs?"
+    These 3 new chain links are placed right before the "Check if DIP should be
+    generated" link.
 
-    Positioning steps:
-
-    1. Position "Bind PIDs" after "Bind PIDs?", which is after "Normalize for
-       access".
+    Binding a PID means requesting from a Handle server a PID (a.k.a. a
+    "handle") for a file, directory or unit, and requesting that the PID be
+    set to resolve to a specific external URL. Note that the PURL (i.e., PID's
+    URL) may be configured to resolve to different external (resolve) URLs
+    depending on the qualifier (GET query parameter) that is appended to it.
+    See archivematicaCommon/lib/bindpid.py for more details.
     """
 
     ###########################################################################
@@ -75,8 +55,6 @@ def data_migration(apps, schema_editor):
 
     # This is the TaskType that handles client scripts that treat an entire
     # directory (i.e., Transfer) in one go.
-    # TODO: use this if adding another link for binding PIDs for units and
-    # directories, which seems will be necessary.
     entire_directory_task_type = TaskType.objects.get(
         description='one instance')
 
@@ -95,39 +73,73 @@ def data_migration(apps, schema_editor):
     before_cl = MicroServiceChainLink.objects.get(id=before_cl_uuid)
 
     ###########################################################################
-    # New Chain Links: "Bind PIDs"
+    # New Chain Links: "Bind PIDs" - for whole unit: unit and dirs
     ###########################################################################
 
     # StandardTaskConfig that performs "Bind PIDs"
-    bind_pids_stc_uuid = 'b055f0a4-75d7-4747-98fe-aab08d835403'
+    bind_pids_stc_uuid = '0bd2524d-573a-4c8e-86b4-8fa54a5acfad'
     StandardTaskConfig.objects.create(
         id=bind_pids_stc_uuid,
-        execute='bindPID_v0.0',
-        arguments=('"%fileUUID%" --bind-pids "%BindPIDs%"'),
+        execute='bindPIDs_v0.0',
+        arguments=('"%SIPUUID%" --bind-pids "%BindPIDs%"'),
         stdout_file='%SIPLogsDirectory%handles.log'
     )
 
     # TaskConfig that performs "Bind PIDs"
-    bind_pids_task_cfg_uuid = '9c9e75e9-04b0-4a04-83ad-07ddf2ff9a17'
+    bind_pids_task_cfg_uuid = '88d8d473-6948-4f5d-abcb-12fb392df17a'
     bind_pids_task_cfg = TaskConfig.objects.create(
         id=bind_pids_task_cfg_uuid,
-        tasktype=each_file_task_type,
+        tasktype=entire_directory_task_type,   # <= cp to ``each_file_task_type`` below
         description='Bind PIDs',
         tasktypepkreference=bind_pids_stc_uuid,
         replaces_id=None,
     )
 
-    # MSChainLink that performs "Bind PIDs" in the "Normalize for preservation
-    # and access" chain.
-    bind_pids_chain_link_uuid = '87e93d08-36e4-4c81-99a8-beea00b18400'
+    # MSChainLink that performs "Bind PID"
+    bind_pids_chain_link_uuid = '7677d1cd-2211-4969-8c10-5ec2a93d5c2f'
     bind_pids_chain_link = MicroServiceChainLink.objects.create(
         id=bind_pids_chain_link_uuid,
         microservicegroup='Bind PIDs',
         defaultexitmessage='Failed',
         currenttask=bind_pids_task_cfg,
         replaces_id=None,
-        # Comes before existing "Normalize for preservation" chain link.
+        # Comes before existing "Check if DIP should be generated" chain link.
         defaultnextchainlink=after_cl
+    )
+
+    ###########################################################################
+    # New Chain Links: "Bind PID" - for each file
+    ###########################################################################
+
+    # StandardTaskConfig that performs "Bind PID"
+    bind_pid_stc_uuid = 'b055f0a4-75d7-4747-98fe-aab08d835403'
+    StandardTaskConfig.objects.create(
+        id=bind_pid_stc_uuid,
+        execute='bindPID_v0.0',
+        arguments=('"%fileUUID%" --bind-pids "%BindPIDs%"'),
+        stdout_file='%SIPLogsDirectory%handles.log'
+    )
+
+    # TaskConfig that performs "Bind PID"
+    bind_pid_task_cfg_uuid = '9c9e75e9-04b0-4a04-83ad-07ddf2ff9a17'
+    bind_pid_task_cfg = TaskConfig.objects.create(
+        id=bind_pid_task_cfg_uuid,
+        tasktype=each_file_task_type,
+        description='Bind PID',
+        tasktypepkreference=bind_pid_stc_uuid,
+        replaces_id=None,
+    )
+
+    # MSChainLink that performs "Bind PID"
+    bind_pid_chain_link_uuid = '87e93d08-36e4-4c81-99a8-beea00b18400'
+    bind_pid_chain_link = MicroServiceChainLink.objects.create(
+        id=bind_pid_chain_link_uuid,
+        microservicegroup='Bind PIDs',
+        defaultexitmessage='Failed',
+        currenttask=bind_pid_task_cfg,
+        replaces_id=None,
+        # Comes before "Bind PIDs" chain link declared in stanza above.
+        defaultnextchainlink=bind_pids_chain_link
     )
 
     ###########################################################################
@@ -153,7 +165,7 @@ def data_migration(apps, schema_editor):
         currenttask=bind_pids_choice_task_cfg,
         replaces_id=None,
         # Comes before chain link created above
-        defaultnextchainlink=bind_pids_chain_link
+        defaultnextchainlink=bind_pid_chain_link
     )
 
     # Create the "No" choice, i.e., "No, do not assign UUIDs to directories".
@@ -175,7 +187,7 @@ def data_migration(apps, schema_editor):
     )
 
     ###########################################################################
-    # Positioning
+    # Positioning: Bind PIDs? < Bind PID < Bind PIDs
     ###########################################################################
 
     # Configure any links that exit to "Check if DIP should be generated" to
@@ -202,7 +214,21 @@ def data_migration(apps, schema_editor):
             nextmicroservicechainlink=after_cl
         )
 
-    # NEW Make "Bind PIDs?" exit to "Bind PIDs"
+    # Make "Bind PID" exit to "Bind PIDs"
+    # Note: in ``exit_message_codes`` 2 is 'Completed successfully' and 4 is
+    # 'Failed'; see models.py.
+    for pk, exit_code, exit_message_code in (
+            ('5c20b218-76a9-4a59-aa47-96e8f0e8f2b0', 0, 2),
+            ('556de3a0-1b8d-4fec-abbb-6b0608477869', 1, 4)):
+        MicroServiceChainLinkExitCode.objects.create(
+            id=pk,
+            microservicechainlink=bind_pid_chain_link,
+            exitcode=exit_code,
+            exitmessage=exit_message_code,
+            nextmicroservicechainlink=bind_pids_chain_link
+        )
+
+    # Make "Bind PIDs?" exit to "Bind PID"
     # Note: in ``exit_message_codes`` 2 is 'Completed successfully' and 4 is
     # 'Failed'; see models.py.
     for pk, exit_code, exit_message_code in (
@@ -213,7 +239,7 @@ def data_migration(apps, schema_editor):
             microservicechainlink=bind_pids_choice_chain_link,
             exitcode=exit_code,
             exitmessage=exit_message_code,
-            nextmicroservicechainlink=bind_pids_chain_link
+            nextmicroservicechainlink=bind_pid_chain_link
         )
 
     # Make the ``before`` chain link exit to the "Bind PIDs?" link.
