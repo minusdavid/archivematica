@@ -223,3 +223,10 @@ def format_subdir_path(dir_path, path_prefix_to_repl):
     """
     return os.path.join(dir_path, '').replace(
         path_prefix_to_repl, '%transferDirectory%', 1)
+
+
+def str2bool(val):
+    """'True' is ``True``; aught else is ``False."""
+    if val == 'True':
+        return True
+    return False

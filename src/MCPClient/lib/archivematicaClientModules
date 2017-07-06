@@ -40,6 +40,7 @@ assignUUIDsToDirectories_v0.0 = %clientScriptsDirectory%assignUUIDsToDirectories
 backupDIP_v0.0 = %clientScriptsDirectory%backupDIP.sh
 bagit_v0.0 = %clientScriptsDirectory%archivematicaBagWithEmptyDirectories.py
 bindPID_v0.0 = %clientScriptsDirectory%bind_pid.py
+bindPIDs_v0.0 = %clientScriptsDirectory%bind_pids.py
 characterizeFile_v0.0 = %clientScriptsDirectory%characterizeFile.py
 checkForAccessDirectory_v0.0 = %clientScriptsDirectory%checkForAccessDirectory.py
 checkForServiceDirectory_v0.0 = %clientScriptsDirectory%checkForServiceDirectory.py

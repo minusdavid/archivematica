@@ -358,14 +358,15 @@ def deUnicode(str):
     return unicode(str).encode('utf-8')
 
 
-def create_directory_models(dir_paths_uuids, transfer_mdl):
+def create_directory_models(dir_paths_uuids, unit_mdl, unit_type='transfer'):
     """Create ``Directory`` models to encode the relationship between each
     directory path/UUID pair in ``dir_paths_uuids`` and the ``Transfer`` model
     that the directories are a part of.
     """
+    unit_type = {'transfer': 'transfer'}.get(unit_type, 'sip')
     Directory.objects.bulk_create([
-        Directory(uuid=dir_uuid,
-                  transfer=transfer_mdl,
-                  originallocation=dir_path,
-                  currentlocation=dir_path)
+        Directory(**{'uuid': dir_uuid,
+                     unit_type: unit_mdl,
+                     'originallocation': dir_path,
+                     'currentlocation': dir_path})
         for dir_path, dir_uuid in dir_paths_uuids])

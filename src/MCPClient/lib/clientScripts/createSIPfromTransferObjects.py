@@ -89,8 +89,24 @@ if __name__ == '__main__':
 
     # Update all Directory models of this Transfer (if any exist) so that they
     # reference the new SIP.
-    Directory.objects.filter(transfer_id=transferUUID).update(
-        sip_id=sip_uuid)
+    # Directory.objects.filter(transfer_id=transferUUID).update(
+    #     sip_id=sip_uuid)
+
+    # Get the ``Directory`` models representing the subdirectories in the
+    # objects/ directory. For each subdirectory, confirm it's in the SIP
+    # objects/ directory, and update the current location and owning SIP.
+    dirs = Directory.objects.filter(
+        transfer_id=transferUUID,
+        currentlocation__startswith='%transferDirectory%objects')
+    for d in dirs:
+        currentPath = databaseFunctions.deUnicode(d.currentlocation)
+        currentSIPDirPath = currentPath.replace("%transferDirectory%", tmpSIPDir)
+        if os.path.isdir(currentSIPDirPath):
+            d.currentlocation = currentPath.replace("%transferDirectory%", "%SIPDirectory%")
+            d.sip = sip
+            d.save()
+        else:
+            print("directory not found: ", currentSIPDirPath, file=sys.stderr)
 
     # Get the database list of files in the objects directory.
     # For each file, confirm it's in the SIP objects directory, and update the
