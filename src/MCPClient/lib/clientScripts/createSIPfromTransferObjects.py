@@ -65,12 +65,23 @@ if __name__ == '__main__':
     print('sip_uuid', sip_uuid)
     print('sip_type', sip_type)
 
+    # Find out if any ``Directory`` models were created for the source
+    # ``Transfer``. If so, this fact gets recorded in the new ``SIP`` model.
+    dir_mdls = Directory.objects.filter(
+        transfer_id=transferUUID,
+        currentlocation__startswith='%transferDirectory%objects')
+    diruuids = len(dir_mdls) > 0
+
     # Create row in SIPs table if one doesn't already exist
     lookup_path = destSIPDir.replace(sharedPath, '%sharedPath%')
     try:
         sip = SIP.objects.get(currentpath=lookup_path).uuid
+        if diruuids:
+            sip.diruuids = True
+            sip.save()
     except SIP.DoesNotExist:
-        sip_uuid = databaseFunctions.createSIP(lookup_path, UUID=sip_uuid, sip_type=sip_type)
+        sip_uuid = databaseFunctions.createSIP(
+            lookup_path, UUID=sip_uuid, sip_type=sip_type, diruuids=diruuids)
         sip = SIP.objects.get(uuid=sip_uuid)
 
     # Move the objects to the SIPDir
@@ -87,24 +98,16 @@ if __name__ == '__main__':
         else:
             shutil.move(src_path, dst_path)
 
-    # Update all Directory models of this Transfer (if any exist) so that they
-    # reference the new SIP.
-    # Directory.objects.filter(transfer_id=transferUUID).update(
-    #     sip_id=sip_uuid)
-
     # Get the ``Directory`` models representing the subdirectories in the
     # objects/ directory. For each subdirectory, confirm it's in the SIP
     # objects/ directory, and update the current location and owning SIP.
-    dirs = Directory.objects.filter(
-        transfer_id=transferUUID,
-        currentlocation__startswith='%transferDirectory%objects')
-    for d in dirs:
-        currentPath = databaseFunctions.deUnicode(d.currentlocation)
+    for dir_mdl in dir_mdls:
+        currentPath = databaseFunctions.deUnicode(dir_mdl.currentlocation)
         currentSIPDirPath = currentPath.replace("%transferDirectory%", tmpSIPDir)
         if os.path.isdir(currentSIPDirPath):
-            d.currentlocation = currentPath.replace("%transferDirectory%", "%SIPDirectory%")
-            d.sip = sip
-            d.save()
+            dir_mdl.currentlocation = currentPath.replace("%transferDirectory%", "%SIPDirectory%")
+            dir_mdl.sip = sip
+            dir_mdl.save()
         else:
             print("directory not found: ", currentSIPDirPath, file=sys.stderr)
 

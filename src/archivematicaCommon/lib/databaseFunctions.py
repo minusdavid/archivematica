@@ -309,13 +309,14 @@ def fileWasRemoved(fileUUID, utcDate=None, eventDetail="", eventOutcomeDetailNot
     f.save()
 
 
-def createSIP(path, UUID=None, sip_type='SIP'):
+def createSIP(path, UUID=None, sip_type='SIP', diruuids=False):
     """
     Create a new SIP object for a SIP at the given path.
 
     :param str path: The current path of the SIP on disk. Can contain variables; see the documentation for ReplacementDict for supported names.
     :param str UUID: The UUID to be created for the SIP. If not specified, a new UUID will be generated using the version 4 scheme.
     :param str sip_type: A string representing the type of the SIP. Defaults to "SIP". The other value typically used is "AIC".
+    :param str diruuids: A boolean indicating whether the SIP should have UUIDs assigned to all of its subdirectories. This param is relevant in filesystem_ajax/views.py and clientScripts/createSIPfromTransferObjects.py.
 
     :returns str: The UUID for the created SIP.
     """
@@ -324,7 +325,8 @@ def createSIP(path, UUID=None, sip_type='SIP'):
     print("Creating SIP:", UUID, "-", path)
     sip = SIP(uuid=UUID,
               currentpath=path,
-              sip_type=sip_type)
+              sip_type=sip_type,
+              diruuids=diruuids)
     sip.save()
 
     return UUID

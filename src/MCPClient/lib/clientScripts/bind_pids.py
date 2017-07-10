@@ -44,19 +44,20 @@ from __future__ import print_function
 
 import argparse
 from functools import wraps
+from itertools import chain
 import sys
 
 import django
 django.setup()
 # dashboard
-from main.models import DashboardSetting, File, Identifier, SIP
+from main.models import DashboardSetting, Directory, Identifier, SIP
 # archivematicaCommon
 from archivematicaFunctions import str2bool
-from bindpid import bind_pid, HandlePIDException
+from bindpid import bind_pid, BindPIDException
 from custom_handlers import get_script_logger
 
 
-logger = get_script_logger('archivematica.mcp.client.bind_pid')
+logger = get_script_logger('archivematica.mcp.client.bind_pids')
 
 
 class BindPIDsException(Exception):
@@ -89,29 +90,36 @@ def _exit_if_not_bind_pids(bind_pids_switch):
         raise BindPIDsWarning
 
 
-def _get_bind_pid_config(sip_uuid):
-    """Return dict to pass to ``bindpid`` function as keyword arguments."""
-    _args = {'entity_type': 'unit',
-             'desired_pid': sip_uuid}
-    _args.update(DashboardSetting.objects.get_dict('handle'))
-    return _args
-
-
-def _update_file_mdl(sip_uuid, naming_authority):
-    """Add the newly minted handle to the ``File`` model as an identifier in its
+def _add_pid_to_mdl_identifiers(mdl, config):
+    """Add the newly minted handle to the ``SIP`` model as an identifier in its
     m2m ``identifiers`` attribute.
     """
     identifier = Identifier.objects.create(
-        type='hdl:{}'.format(naming_authority),
-        value='{}/{}'.format(naming_authority, sip_uuid))
-    file_mdl = File.objects.get(uuid=sip_uuid)
-    file_mdl.identifiers.add(identifier)
+        type='hdl:{}'.format(config['naming_authority']),
+        value='{}/{}'.format(config['naming_authority'], config['desired_pid']))
+    mdl.identifiers.add(identifier)
 
 
 def _get_sip(sip_uuid):
     try:
         return SIP.objects.get(uuid=sip_uuid)
     except SIP.DoesNotExist:
+        raise BindPIDsException
+
+
+def _bind_pid_to_model(mdl, config):
+    entity_type = 'unit' if isinstance(mdl, SIP) else 'file'
+    config.update({'entity_type': entity_type,
+                   'desired_pid': mdl.uuid})
+    try:
+        msg = bind_pid(**config)
+        _add_pid_to_mdl_identifiers(mdl, config)
+        print(msg)  # gets appended to handles.log file, cf. StandardTaskConfig
+        logger.info(msg)
+        return 0
+    except BindPIDException as exc:
+        print(exc, file=sys.stderr)
+        logger.info(exc)
         raise BindPIDsException
 
 
@@ -122,26 +130,17 @@ def main(sip_uuid, bind_pids_switch):
     ``True``.
     """
     _exit_if_not_bind_pids(bind_pids_switch)
-    # Get accession number from SIP's Transfer? Possible?... many-Tr-to-single-SIP
-    try:
-        args = _get_bind_pid_config(sip_uuid)
-        sip = _get_sip(sip_uuid)
-
-        msg = bind_pid(**args)
-        _update_file_mdl(sip_uuid, args['naming_authority'])
-        print(msg)  # gets appended to handles.log file, cf. StandardTaskConfig
-        logger.info(msg)
-        return 0
-    except HandlePIDException as exc:
-        print(exc, file=sys.stderr)
-        logger.info(exc)
-        raise BindPIDsException
+    for mdl in chain([_get_sip(sip_uuid)],
+                     Directory.objects.filter(sip_id=sip_uuid).all()):
+        _bind_pid_to_model(mdl, DashboardSetting.objects.get_dict('handle'))
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('sip_uuid', type=str,
-                        help='The UUID of the SIP to bind a PID for.')
+                        help='The UUID of the SIP to bind a PID for; any'
+                             ' directories associated to this SIP will have'
+                             ' PIDs bound as well.')
     parser.add_argument('--bind-pids', action='store', type=str2bool,
                         dest="bind_pids_switch", default='No')
     args = parser.parse_args()
@@ -149,4 +148,3 @@ if __name__ == '__main__':
         sys.exit(0)
     logger.info('bind_pids called with args: %s', vars(args))
     sys.exit(main(**vars(args)))
-

@@ -332,10 +332,33 @@ def copy_to_start_transfer(filepath='', type='', accession='', transfer_metadata
     return destination
 
 
+def _source_transfers_gave_uuids_to_directories(files):
+    """Returns ``True`` if any of the ``Transfer`` models (that any of the
+    ``File`` models referenced in ``files`` were accessioned by) gave UUIDs to
+    directories. If ``True`` is returned, we assign new UUIDs to all
+    directories in the arranged SIP.
+    """
+    file_uuids = filter(None, [file_.get('uuid') for file_ in files])
+    return any([
+        rslt[0] for rslt in
+        models.Transfer.objects.filter(
+            file__uuid__in=file_uuids).values_list(
+                'diruuids').distinct()])
+
+
 def create_arranged_sip(staging_sip_path, files, directories, sip_uuid):
     shared_dir = helpers.get_server_config_value('sharedDirectory')
     staging_sip_path = staging_sip_path.lstrip('/')
     staging_abs_path = os.path.join(shared_dir, staging_sip_path)
+
+    # QUESTION: How do we know that an arranged SIP should document
+    # directories, i.e., give them UUIDs and potentially PIDs? The only clue
+    # would seem to be whether any of the transfers the SIP was generated from
+    # were set to assign UUIDs to directories. Here is the rule being followed
+    # for now: if an arranged SIP contains a single file that comes from a
+    # transfer wherein UUIDs were assigned to directories, then assign new
+    # UUIDs to all directories in the arranged SIP.
+    diruuids = _source_transfers_gave_uuids_to_directories(files)
 
     # Create SIP object
     sip_name = staging_sip_path.split('/')[1]
@@ -346,19 +369,25 @@ def create_arranged_sip(staging_sip_path, files, directories, sip_uuid):
         sip = models.SIP.objects.get(uuid=sip_uuid)
     except models.SIP.DoesNotExist:
         # Create a SIP object if none exists
-        databaseFunctions.createSIP(currentpath, sip_uuid)
+        databaseFunctions.createSIP(currentpath, sip_uuid, diruuids=diruuids)
+        sip = models.SIP.objects.get(uuid=sip_uuid)
     else:
         # Update the already-created SIP with its path
         if sip.currentpath is not None:
             return _('Provided SIP UUID (%(uuid)s) belongs to an already-started SIP!') % {'uuid': sip_uuid}
         sip.currentpath = currentpath
+        sip.diruuids = diruuids
         sip.save()
 
-    # Create new Directory models for all subdirectories in the newly arranged
-    # SIP. Because the user can arbitrarily modify the directory structure, we
-    # can't reuse any directory models created during transfer.
-    databaseFunctions.create_directory_models(
-        archivematicaFunctions.get_dir_uuids(directories, logger), sip)
+    if diruuids:
+        # Create new Directory models for all subdirectories in the newly
+        # arranged SIP. Because the user can arbitrarily modify the directory
+        # structure, it doesn't make sense to reuse any directory models that
+        # were created during transfer.
+        databaseFunctions.create_directory_models(
+            archivematicaFunctions.get_dir_uuids(directories, logger),
+            sip,
+            unit_type='sip')
 
     # Update currentLocation of files
     for file_ in files:

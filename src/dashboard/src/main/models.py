@@ -312,6 +312,7 @@ class SIP(models.Model):
     )
     sip_type = models.CharField(max_length=8, choices=SIP_TYPE_CHOICES, db_column='sipType', default='SIP')
     identifiers = models.ManyToManyField('Identifier')
+    diruuids = models.BooleanField(db_column='dirUUIDs', default=False)
 
     # Deprecated
     magiclink = models.ForeignKey('MicroServiceChainLink', db_column='magicLink', null=True, blank=True)
@@ -423,7 +424,9 @@ class File(models.Model):
     """ Information about Files in units (Transfers, SIPs). """
     uuid = models.CharField(max_length=36, primary_key=True, db_column='fileUUID')
     sip = models.ForeignKey(SIP, db_column='sipUUID', to_field='uuid', null=True, blank=True)
-    transfer = models.ForeignKey(Transfer, db_column='transferUUID', to_field='uuid', null=True, blank=True)
+    transfer = models.ForeignKey(Transfer, db_column='transferUUID',
+            to_field='uuid', null=True, blank=True)
+
     # both actually `longblob` in the database
     originallocation = BlobTextField(db_column='originalLocation')
     currentlocation = BlobTextField(db_column='currentLocation', null=True)

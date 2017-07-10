@@ -284,4 +284,9 @@ class Migration(migrations.Migration):
             name='identifiers',
             field=models.ManyToManyField(to='main.Identifier'),
         ),
+        migrations.AddField(
+            model_name='sip',
+            name='diruuids',
+            field=models.BooleanField(default=False, db_column=b'dirUUIDs'),
+        )
     ]

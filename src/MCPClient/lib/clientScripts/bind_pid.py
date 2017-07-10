@@ -53,7 +53,7 @@ django.setup()
 # dashboard
 from main.models import DashboardSetting, File, Identifier
 # archivematicaCommon
-from bindpid import bind_pid, HandlePIDException
+from bindpid import bind_pid, BindPIDException
 from custom_handlers import get_script_logger
 
 
@@ -130,7 +130,7 @@ def main(file_uuid, bind_pids_switch):
         print(msg)  # gets appended to handles.log file, cf. StandardTaskConfig
         logger.info(msg)
         return 0
-    except HandlePIDException as exc:
+    except BindPIDException as exc:
         print(exc, file=sys.stderr)
         logger.info(exc)
         raise BindPIDException

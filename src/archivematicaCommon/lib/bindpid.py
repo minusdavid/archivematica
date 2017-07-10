@@ -1,4 +1,4 @@
-#! /usr/bin/env python3
+#! /usr/bin/env python
 """Bind PID. Command-line utility and module for requesting PID-binding against
 a Handle.net server.
 
@@ -194,7 +194,7 @@ ENTITY_TYPES = {
         'optional': ('resolve_url_template_mets',)}}
 
 
-class HandlePIDException(Exception):
+class BindPIDException(Exception):
     pass
 
 
@@ -203,17 +203,17 @@ def _validate(argdict):
     for param in REQ_PARAMS:
         val = argdict.get(param)
         if not val:
-            raise HandlePIDException(
+            raise BindPIDException(
                 'A value for parameter {} is required'.format(param))
     entity_type = argdict['entity_type']
     et_validation = ENTITY_TYPES.get(entity_type)
     if not et_validation:
-        raise HandlePIDException(
+        raise BindPIDException(
             'The value for parameter entity_type must be one of {}'.format(
                 ', '.join(ENTITY_TYPES)))
     for param in et_validation['required']:
         if not argdict.get(param):
-            raise HandlePIDException(
+            raise BindPIDException(
                 'To request a PID for a {}, you must also supply a values'
                 ' for {}'.format(entity_type, param))
 
@@ -344,7 +344,7 @@ def bind_pid(**kwargs):
                     '{} => {}'.format(*x) for x in purl_map.items())))
         return yay_msg
     else:
-        raise HandlePIDException(
+        raise BindPIDException(
             'Request to handle server at\n{}\nwith request body\n{}\nreturned'
             ' bad status code {} and response body\n{}'.format(
                 kwargs['pid_web_service_endpoint'],
@@ -455,5 +455,5 @@ if __name__ == '__main__':
     try:
         msg = bind_pid(**params)
         print(msg)
-    except HandlePIDException as exc:
+    except BindPIDException as exc:
         print(exc)
