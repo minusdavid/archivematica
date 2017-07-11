@@ -443,7 +443,7 @@ def data_migration(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('main', '0033_mediaconch_validation'),
+        ('main', '0035_mediaconch_validation'),
     ]
 
     operations = [

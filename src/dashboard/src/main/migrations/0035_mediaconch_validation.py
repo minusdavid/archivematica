@@ -238,7 +238,7 @@ def data_migration(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('main', '0032_dashboardsetting_scope'),
+        ('main', '0034_add_readme_to_aips'),
     ]
 
     operations = [
